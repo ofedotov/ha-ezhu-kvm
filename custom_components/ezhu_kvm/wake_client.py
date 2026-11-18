@@ -1059,12 +1059,12 @@ class EzhuKvmClient:
         save_to_flash: bool = True,
         sock: socket.socket | None = None,
     ) -> None:
-        """0x08 SetADCParams: Write ADC channel calibration parameters (30-byte request payload)."""
+        """0x08 SetADCParams: Write ADC channel calibration parameters (30-byte request payload, requires factory password)."""
         if not 0 <= params.channel <= 7:
             raise ValueError(f"ADC channel must be 0..7, got {params.channel}")
         payload = (
             bytes([params.channel])
-            + self._encode_password()
+            + self._encode_factory_password()
             + params.to_bytes()
             + bytes([1 if save_to_flash else 0])
         )
@@ -1308,25 +1308,49 @@ def _collect_lan_candidate_ips() -> list[str]:
     except (OSError, subprocess.SubprocessError):
         pass
 
-    # 3. Active local /24 subnet sweep
+    # 3. Active local /24 subnet(s) sweep (including default gateway /24 on /16 networks)
+    candidate_subnets: list[ipaddress.IPv4Network] = []
+    local_ip: str | None = None
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_sock:
             udp_sock.connect(("192.0.2.1", 80))
             local_ip = udp_sock.getsockname()[0]
-        net = ipaddress.IPv4Network(f"{local_ip}/24", strict=False)
+        candidate_subnets.append(ipaddress.IPv4Network(f"{local_ip}/24", strict=False))
+        octets = local_ip.split(".")
+        if len(octets) == 4 and octets[2] != "0":
+            base_24 = f"{octets[0]}.{octets[1]}.0.0/24"
+            candidate_subnets.append(ipaddress.IPv4Network(base_24, strict=False))
+    except OSError:
+        pass
+
+    # Also check Linux /proc/net/route for default gateway /24
+    proc_route = Path("/proc/net/route")
+    if proc_route.is_file():
+        try:
+            for line in proc_route.read_text(encoding="utf-8", errors="ignore").splitlines()[1:]:
+                fields = line.split()
+                if len(fields) >= 3 and fields[1] == "00000000" and fields[2] != "00000000":
+                    gw_int = int(fields[2], 16)
+                    gw_bytes = struct.pack("<I", gw_int)
+                    gw_ip = format_ipv4(gw_bytes)
+                    gw_net = ipaddress.IPv4Network(f"{gw_ip}/24", strict=False)
+                    if gw_net not in candidate_subnets:
+                        candidate_subnets.insert(0, gw_net)
+        except (OSError, ValueError):
+            pass
+
+    for net in candidate_subnets:
         for host in net.hosts():
             host_str = str(host)
             if host_str != local_ip:
                 _add(host_str, is_priority=False)
-    except OSError:
-        pass
 
     return priority_ips + arp_ips
 
 
 def discover_kvm_devices(
     port: int = DEFAULT_PORT,
-    timeout: float = 0.5,
+    timeout: float = 0.35,
     candidate_ips: list[str] | None = None,
 ) -> list[tuple[str, KvmInfoEx]]:
     """Scan LAN candidates for open TCP port 1001 and verify via WAKE 0x04 GetInfoEx."""
@@ -1341,7 +1365,14 @@ def discover_kvm_devices(
         return []
 
     def _probe(ip_str: str) -> tuple[str, KvmInfoEx] | None:
-        client = EzhuKvmClient(host=ip_str, port=port, timeout=max(0.5, timeout))
+        # Stage 1: fast TCP port 1001 reachability check
+        try:
+            with socket.create_connection((ip_str, port), timeout=max(0.25, timeout)):
+                pass
+        except OSError:
+            return None
+        # Stage 2: full WAKE 0x04 GetInfoEx verification
+        client = EzhuKvmClient(host=ip_str, port=port, timeout=2.5)
         try:
             info = client.get_info_ex()
             return (ip_str, info)
@@ -1349,7 +1380,7 @@ def discover_kvm_devices(
             return None
 
     found: list[tuple[str, KvmInfoEx]] = []
-    max_workers = min(48, max(1, len(targets)))
+    max_workers = min(96, max(1, len(targets)))
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(_probe, ip): ip for ip in targets}
         for fut in as_completed(futures):

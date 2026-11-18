@@ -1,4 +1,4 @@
-# EZHU KVM48 Power System (`ezhu_kvm`) — Home Assistant Custom Integration
+# <img src="icon.png" width="48" align="absmiddle" alt="INTEGRAL"> EZHU KVM48 Power System (`ezhu_kvm`) — Home Assistant Custom Integration
 
 Complete Home Assistant integration for the **ЕЖУ И 14000 Б 48-160-хД** DC power supply system with the **КВМ48-20** controller (`INTEGRAL`, firmware `VPMA.758725.037`), communicating directly over **TCP Port 1001** using the binary **WAKE protocol**.
 
