@@ -1,0 +1,20 @@
+{
+  "domain": "ezhu_kvm",
+  "name": "EZHU KVM48 Power System",
+  "codeowners": ["@ofedotov"],
+  "config_flow": true,
+  "dhcp": [
+    {
+      "macaddress": "1E306C*"
+    },
+    {
+      "hostname": "kvm*"
+    }
+  ],
+  "documentation": "https://github.com/ofedotov/ha-ezhu-kvm",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ofedotov/ha-ezhu-kvm/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}

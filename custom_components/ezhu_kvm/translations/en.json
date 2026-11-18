@@ -1,0 +1,58 @@
+{
+  "config": {
+    "flow_title": "{name} ({host})",
+    "step": {
+      "user": {
+        "title": "EZHU KVM48 Power System (ЕЖУ КВМ48-20)",
+        "description": "Connect to an INTEGRAL EZHU KVM48-20 (ЕЖУ И 14000 Б 48-160-хД) DC power supply controller over TCP WAKE protocol (port 1001). Leave Host empty to automatically scan the local network.",
+        "data": {
+          "host": "Host / IP Address (leave empty for auto-discovery)",
+          "port": "TCP Port",
+          "password": "Admin Password (Set commands)",
+          "factory_password": "Factory Password (SetSysInfo 0x1F)",
+          "scan_interval": "Polling Interval (seconds)"
+        }
+      },
+      "dhcp_confirm": {
+        "title": "Discovered EZHU KVM48 Power System",
+        "description": "Do you want to configure {name} ({hostname}) at {host} (Serial: {serial_number})?",
+        "data": {
+          "password": "Admin Password (Set commands)",
+          "factory_password": "Factory Password (SetSysInfo 0x1F)",
+          "scan_interval": "Polling Interval (seconds)"
+        }
+      },
+      "pick_device": {
+        "title": "Select Discovered EZHU KVM48 Controller",
+        "description": "Multiple EZHU KVM48 controllers were found on the local network. Select which one to add.",
+        "data": {
+          "host": "Discovered Controller"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the EZHU KVM48 controller over TCP WAKE protocol.",
+      "no_devices_found": "No EZHU KVM48 controllers were found on the local network.",
+      "already_configured": "All discovered EZHU KVM48 controllers are already configured.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This EZHU KVM48 controller is already configured.",
+      "cannot_connect": "Device did not respond to EZHU KVM48 WAKE protocol."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EZHU KVM48 Power System Options",
+        "data": {
+          "host": "Host / IP Address",
+          "port": "TCP Port",
+          "password": "Admin Password (Set commands)",
+          "factory_password": "Factory Password (SetSysInfo 0x1F)",
+          "scan_interval": "Polling Interval (seconds)"
+        }
+      }
+    }
+  }
+}
